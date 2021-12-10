@@ -3,12 +3,32 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.IO;
+using System;
+
+[Serializable]
+public class NodeClass
+{
+    public string name;
+    public string sprite;
+    public float x;
+    public float y;
+
+    public List<NodeClass> data;
+}
+
 
 
 [ExecuteInEditMode]
 public class EditManager : MonoBehaviour
 {
     static EditManager instance;
+
+    private Dictionary<string, GameObject> dictPrefabs;
+    private Dictionary<string, Sprite> dictSprites;
+    public List<GameObject> listPrefabs;
+    public GameObject titlePrefab;
+    private Sprite[] titleSprites;
+
 
 #if UNITY_EDITOR
 
@@ -47,10 +67,12 @@ public class EditManager : MonoBehaviour
                 ""
             );
 
-            if (path.Length != 0)
+            if(path.Length != 0)
             {
                 string str = File.ReadAllText(path);
-                instance.Parse(str);
+                NodeClass stage = new NodeClass();
+                stage = JsonUtility.FromJson<NodeClass>(str);
+                instance.ParseNode(stage);
             }
         }
     }
@@ -83,7 +105,7 @@ public class EditManager : MonoBehaviour
     private string StringfyNode(GameObject node, int indent = 1)
     {
         string result = SetIndent(indent) + "{";
-        result += "name:" + node.transform.name + ", data:[" + System.Environment.NewLine;
+        result += "\"name\":\"" + node.transform.name + "\",\"data\":[" + System.Environment.NewLine;
 
         for (int i = 0; i < node.transform.childCount; ++i)
         {
@@ -96,7 +118,7 @@ public class EditManager : MonoBehaviour
                     result += "," + System.Environment.NewLine;
                 }
                 result += SetIndent(indent + 1);
-                result += "{name:" + tr.name + ",sprite:" + sr.sprite.name + ",x:" + tr.position.x + ",y:" + tr.position.y + "}";
+                result += "{\"name\":\"" + tr.name + "\",\"sprite\":\"" + sr.sprite.name + "\",\"x\":\"" + tr.position.x + "\",\"y\":\"" + tr.position.y + "\"}";
             }
             else
             {
@@ -109,53 +131,103 @@ public class EditManager : MonoBehaviour
         return result;
     }
 
-
-    private void Parse(string str)
+    public void ParseNode(NodeClass node, GameObject parent = null)
     {
-        int idx = 0;
-        ParseNode(str, idx);
-    }
-
-    public bool ParseNode(string str, int idx)
-    {
-        int st = str.IndexOf('{', idx);
-        if (st >= idx)
+        if(parent == null)
         {
-            int nextSt = str.IndexOf('{', idx + 1);
-            if (nextSt >= idx + 1)
-            {
-                ParseNode(str, nextSt);
-            }
-            else
-            {
-                int endSt = str.IndexOf('}', idx + 1);
-                if (endSt >= idx + 1)
-                {
-                    string nodeStr = str.Substring(idx + 1, endSt - st - 1);
-                    string[] data = nodeStr.Split(',');
+            parent = new GameObject("NewStage");
+        }
 
-                    for (int i = 0; i < data.Length; ++i)
-                    {
-                        ParseNode(data[i], 0);
-                    }
-                }
-                else
+        if(node != null)
+        {
+            if(node.data != null && node.data.Count > 0)
+            {
+                GameObject currentObj;
+
+                currentObj = MakeNode(node, parent);
+
+                foreach(var child in node.data)
                 {
-                    Debug.LogError("Parse err");
+                    ParseNode(child as NodeClass, currentObj);
                 }
             }
         }
         else
         {
-            Debug.Log(str);
+            MakeNode(node, parent);
+        }
+    }
+
+    public GameObject MakeNode(NodeClass node, GameObject parent)
+    {
+        GameObject obj = null;
+
+        if(parent != null)
+        {
+            if(dictPrefabs.ContainsKey(node.name))
+            {
+                obj = Instantiate(dictPrefabs[node.name]);
+                obj.transform.position = new Vector2(node.x, node.y);
+                obj.transform.SetParent(parent.transform);
+            }
+            else
+            {
+                if(node.sprite != null)
+                {
+                    obj = MakeSpriteNode(node, parent);
+                }
+                else
+                {
+                    obj = new GameObject(node.name);
+                    obj.transform.SetParent(parent.transform);
+                }
+            }
         }
 
-        return true;
+        return obj;
+    }
+
+    public GameObject MakeSpriteNode(NodeClass node, GameObject parent)
+    {
+        GameObject obj = null;
+
+        if(parent != null)
+        {
+            obj = Instantiate(titlePrefab);
+
+            SpriteRenderer sr = obj.GetComponent<SpriteRenderer>();
+            obj.name = node.name;
+            if(dictSprites.ContainsKey(node.sprite))
+            {
+                sr.sprite = dictSprites[node.sprite];
+            }
+            else 
+            {
+                Debug.Log("Sprite not found: " + node.sprite);
+            }
+            obj.transform.SetParent(parent.transform);
+            obj.transform.position = new Vector2(node.x, node.y);
+        }
+
+        return obj;
     }
 
     private void Start() 
     {
         instance = this;
+
+        dictPrefabs = new Dictionary<string, GameObject>();
+        foreach(var obj in listPrefabs)
+        {
+            dictPrefabs[obj.name] = obj;
+        }
+
+        titleSprites = Resources.LoadAll<Sprite>("Platforms");
+        dictSprites = new Dictionary<string, Sprite>();
+        foreach(var spr in titleSprites)
+        {
+            dictSprites.Add(spr.name, spr);
+        }
     }
 
 
