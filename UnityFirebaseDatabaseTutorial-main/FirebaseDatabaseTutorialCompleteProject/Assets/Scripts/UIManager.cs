@@ -12,6 +12,7 @@ public class UIManager : MonoBehaviour
     public GameObject registerUI;
     public GameObject userDataUI;
     public GameObject scoreboardUI;
+    public GameObject selectUI;
 
     private void Awake()
     {
@@ -22,8 +23,10 @@ public class UIManager : MonoBehaviour
         else if (instance != null)
         {
             Debug.Log("Instance already exists, destroying object!");
-            Destroy(this);
+            // Destroy(this.gameObject);
         }
+
+        // DontDestroyOnLoad(this);
     }
 
     //Functions to change the login screen UI
@@ -57,5 +60,11 @@ public class UIManager : MonoBehaviour
     {
         ClearScreen();
         scoreboardUI.SetActive(true);
+    }
+
+    public void SelectStageScreen()
+    {
+        ClearScreen();
+        selectUI.SetActive(true);
     }
 }

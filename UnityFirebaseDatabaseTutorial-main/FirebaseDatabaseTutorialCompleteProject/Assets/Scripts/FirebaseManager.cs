@@ -5,9 +5,12 @@ using Firebase.Auth;
 using Firebase.Database;
 using TMPro;
 using System.Linq;
+using UnityEngine.SceneManagement;
 
 public class FirebaseManager : MonoBehaviour
 {
+    public static FirebaseManager instance;
+
     //Firebase variables
     [Header("Firebase")]
     public DependencyStatus dependencyStatus;
@@ -39,8 +42,20 @@ public class FirebaseManager : MonoBehaviour
     public GameObject scoreElement;
     public Transform scoreboardContent;
 
+    // static public string stageData;
+    public string stageData;
+
+    private bool bLoggedIn = false;
+
     void Awake()
     {
+        if(instance != null) {
+            Destroy(this.gameObject);
+            return;
+        }
+
+        instance = this;
+
         //Check that all of the necessary dependencies for Firebase are present on the system
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task =>
         {
@@ -55,6 +70,8 @@ public class FirebaseManager : MonoBehaviour
                 Debug.LogError("Could not resolve all Firebase dependencies: " + dependencyStatus);
             }
         });
+
+        DontDestroyOnLoad(this);
     }
 
     private void InitializeFirebase()
@@ -113,6 +130,11 @@ public class FirebaseManager : MonoBehaviour
         StartCoroutine(LoadScoreboardData());
     }
 
+    public void StageButton(int stage)
+    {
+        StartCoroutine(LoadStageData(stage));
+    }
+
     private IEnumerator Login(string _email, string _password)
     {
         //Call the Firebase auth signin function passing the email and password
@@ -122,6 +144,12 @@ public class FirebaseManager : MonoBehaviour
 
         if (LoginTask.Exception != null)
         {
+            if (bLoggedIn)
+            {
+                UIManager.instance.SelectStageScreen(); // Change to user data UI
+                yield break;
+            }
+
             //If there are errors handle them
             Debug.LogWarning(message: $"Failed to register task with {LoginTask.Exception}");
             FirebaseException firebaseEx = LoginTask.Exception.GetBaseException() as FirebaseException;
@@ -150,6 +178,7 @@ public class FirebaseManager : MonoBehaviour
         }
         else
         {
+            bLoggedIn = true;
             //User is now logged in
             //Now get the result
             User = LoginTask.Result;
@@ -161,7 +190,7 @@ public class FirebaseManager : MonoBehaviour
             yield return new WaitForSeconds(2);
 
             usernameField.text = User.DisplayName;
-            UIManager.instance.UserDataScreen(); // Change to user data UI
+            UIManager.instance.SelectStageScreen(); // Change to user data UI
             confirmLoginText.text = "";
             ClearLoginFeilds();
             ClearRegisterFeilds();
@@ -362,6 +391,32 @@ public class FirebaseManager : MonoBehaviour
             xpField.text = snapshot.Child("xp").Value.ToString();
             killsField.text = snapshot.Child("kills").Value.ToString();
             deathsField.text = snapshot.Child("deaths").Value.ToString();
+        }
+    }
+
+    private IEnumerator LoadStageData(int stage)
+    {
+        //Get the currently logged in user data
+        var DBTask = DBreference.Child("stages").Child("map" + stage).GetValueAsync();
+
+        yield return new WaitUntil(predicate: () => DBTask.IsCompleted);
+
+        if (DBTask.Exception != null)
+        {
+            Debug.LogWarning(message: $"Failed to register task with {DBTask.Exception}");
+        }
+        else if (DBTask.Result.Value == null)
+        {
+            //No data exists yet
+        }
+        else
+        {
+            //Data has been retrieved
+            DataSnapshot snapshot = DBTask.Result;
+
+            Debug.Log(snapshot.Value.ToString());
+            stageData = snapshot.Value.ToString();
+            SceneManager.LoadScene("PlayStage");
         }
     }
 
