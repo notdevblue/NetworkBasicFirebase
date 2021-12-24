@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Firebase;
 using Firebase.Auth;
@@ -130,7 +131,7 @@ public class FirebaseManager : MonoBehaviour
         StartCoroutine(LoadScoreboardData());
     }
 
-    public void StageButton(int stage)
+    public void StageButton(int stage) // 5번
     {
         StartCoroutine(LoadStageData(stage));
     }
@@ -365,6 +366,27 @@ public class FirebaseManager : MonoBehaviour
         }
     }
 
+    // 2번
+    public void SaveTimeToDB(float time)
+    {
+        StartCoroutine(SaveTime(time));
+    }
+    private IEnumerator SaveTime(float _time)
+    {
+        var DBTask = DBreference.Child("users").Child(User.UserId).Child("time").SetValueAsync(_time);
+
+        yield return new WaitUntil(predicate: () => DBTask.IsCompleted);
+
+        if (DBTask.Exception != null)
+        {
+            Debug.LogWarning(message: $"Failed to register task with {DBTask.Exception}");
+        }
+        else
+        {
+
+        }
+    }
+
     private IEnumerator LoadUserData()
     {
         //Get the currently logged in user data
@@ -391,6 +413,41 @@ public class FirebaseManager : MonoBehaviour
             xpField.text = snapshot.Child("xp").Value.ToString();
             killsField.text = snapshot.Child("kills").Value.ToString();
             deathsField.text = snapshot.Child("deaths").Value.ToString();
+        }
+    }
+
+    // 3번
+    public void LoadAllUser()
+    {
+        StartCoroutine(LoadAllUserData());
+    }
+    private IEnumerator LoadAllUserData()
+    {
+        var DBTask = DBreference.Child("Rank").GetValueAsync();
+
+        yield return new WaitUntil(predicate: () => DBTask.IsCompleted);
+
+        if (DBTask.Exception != null)
+        {
+            Debug.LogWarning(message: $"Failed to register task with {DBTask.Exception}");
+        }
+        else if (DBTask.Result.Value == null)
+        {
+
+        }
+        else
+        {
+            foreach(var item in DBTask.Result.Value as Dictionary<string, object>) {
+                foreach(var useritem in item.Value as Dictionary<string, object>) {
+                    RankVO.Instance.AddRank(useritem.Key, useritem.Value);
+                }
+            }
+            // //Data has been retrieved
+            // DataSnapshot snapshot = DBTask.Result;
+
+            // xpField.text = snapshot.Child("xp").Value.ToString();
+            // killsField.text = snapshot.Child("kills").Value.ToString();
+            // deathsField.text = snapshot.Child("deaths").Value.ToString();
         }
     }
 

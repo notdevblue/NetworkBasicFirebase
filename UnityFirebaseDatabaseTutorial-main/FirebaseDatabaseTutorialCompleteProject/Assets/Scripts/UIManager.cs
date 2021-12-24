@@ -16,15 +16,15 @@ public class UIManager : MonoBehaviour
 
     private void Awake()
     {
-        if (instance == null)
-        {
+        // if (instance == null)
+        // {
             instance = this;
-        }
-        else if (instance != null)
-        {
-            Debug.Log("Instance already exists, destroying object!");
-            // Destroy(this.gameObject);
-        }
+        // }
+        // else if (instance != null)
+        // {
+        //     Debug.Log("Instance already exists, destroying object!");
+        //     // Destroy(this.gameObject);
+        // }
 
         // DontDestroyOnLoad(this);
     }
