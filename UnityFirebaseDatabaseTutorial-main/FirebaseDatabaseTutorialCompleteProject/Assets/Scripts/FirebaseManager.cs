@@ -458,6 +458,8 @@ public class FirebaseManager : MonoBehaviour
 
         yield return new WaitUntil(predicate: () => DBTask.IsCompleted);
 
+        
+
         if (DBTask.Exception != null)
         {
             Debug.LogWarning(message: $"Failed to register task with {DBTask.Exception}");
@@ -471,10 +473,28 @@ public class FirebaseManager : MonoBehaviour
             //Data has been retrieved
             DataSnapshot snapshot = DBTask.Result;
 
-            Debug.Log(snapshot.Value.ToString());
             stageData = snapshot.Value.ToString();
             SceneManager.LoadScene("PlayStage");
         }
+
+        var WeatherTask = DBreference.Child("Weather").GetValueAsync();
+
+        yield return new WaitUntil(predicate: () => WeatherTask.IsCompleted);
+
+        Debug.Log(SceneManager.GetActiveScene().name);
+
+        if(WeatherTask.Exception != null )
+        {
+
+        }
+        else
+        {
+            DataSnapshot snapshot = WeatherTask.Result;
+            Debug.Log("Weather: " + snapshot.Value.ToString());
+            WeatherManager.Instance.CurrentWeather = snapshot.Value.ToString();
+        }
+
+
     }
 
     private IEnumerator LoadScoreboardData()
